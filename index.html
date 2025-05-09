@@ -3,199 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Магазин у дома</title>
-  <link rel="manifest" href="manifest.json" />
+  <title>Игра: Угадай число</title>
   <style>
-    body { font-family: sans-serif; margin: 1rem; background: #f0f0f0; }
-    h1 { text-align: center; color: #2e7d32; }
-    #category-filter { margin-bottom: 1rem; }
-    select { padding: 0.4rem; font-size: 1rem; }
-
-    .product-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 1rem;
-    }
-
-    .product {
-      background: white;
-      border-radius: 12px;
+    body {
+      font-family: sans-serif;
+      margin: 0;
       padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      background-color: #f0f0f0;
+      text-align: center;
     }
-
-    .product img {
-      width: 100%;
-      height: 120px;
-      object-fit: cover;
+    .container {
+      max-width: 400px;
+      margin: auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
       border-radius: 8px;
     }
-
-    .add-btn {
-      margin-top: 0.5rem;
-      background: #2e7d32;
-      color: white;
-      border: none;
-      padding: 0.4rem;
-      border-radius: 6px;
-      width: 100%;
-      cursor: pointer;
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
-
-    #cart-button {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: #388e3c;
-      color: white;
-      border: none;
-      padding: 0.6rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 100;
-    }
-
-    #cart-modal {
-      display: none;
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      background: white;
+    input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin: 0.5rem;
+      border-radius: 4px;
       border: 1px solid #ccc;
-      padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      max-width: 320px;
-      max-height: 80vh;
-      overflow-y: auto;
-      z-index: 1000;
     }
-
-    @media (max-width: 600px) {
-      .product-list {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    button {
+      padding: 0.7rem 1rem;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #result {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+    }
+    .stats {
+      margin-top: 2rem;
+      font-size: 1rem;
     }
   </style>
 </head>
 <body>
-  <h1>Магазин у дома</h1>
+  <div class="container">
+    <h1>Игра: Угадай число</h1>
+    <p>Угадай число от 1 до 100</p>
+    <input type="number" id="userGuess" placeholder="Введите число" min="1" max="100" />
+    <button onclick="checkGuess()">Проверить</button>
+    <p id="result"></p>
 
-  <div id="category-filter">
-    <label>Категория: </label>
-    <select id="category-select">
-      <option value="all">Все</option>
-    </select>
+    <div class="stats">
+      <p><strong>Статистика:</strong></p>
+      <p>Попыток сделано: <span id="attempts">0</span></p>
+      <p>Последняя попытка: <span id="lastGuess">-</span></p>
+    </div>
   </div>
 
-  <button id="cart-button">Корзина (0)</button>
-
-  <div id="cart-modal">
-    <h3>Корзина</h3>
-    <div id="cart-items"></div>
-    <button onclick="sendOrder()">Оформить заказ</button>
-  </div>
-
-  <div id="product-list" class="product-list"></div>
-
   <script>
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoChjmnMdjDn-siHAEHrBpDaz-3tkFx68Peo1LXU_Nc8R5XTm5Gee2pi-O9jz1XyYhhCGCDnTKa0cR/pub?gid=0&single=true&output=csv";
+    // Открытие базы данных IndexedDB
+    let db;
+    const request = indexedDB.open('gameDB', 1);
 
-    let cart = [];
-    let products = [];
+    request.onerror = function(event) {
+      console.error('Ошибка при открытии базы данных');
+    };
 
-    function updateCart() {
-      document.getElementById("cart-button").textContent = `Корзина (${cart.length})`;
+    request.onsuccess = function(event) {
+      db = event.target.result;
+      loadGameData();
+    };
+
+    request.onupgradeneeded = function(event) {
+      db = event.target.result;
+      if (!db.objectStoreNames.contains('gameStats')) {
+        const store = db.createObjectStore('gameStats', { keyPath: 'id' });
+        store.createIndex('attempts', 'attempts');
+        store.createIndex('lastGuess', 'lastGuess');
+      }
+    };
+
+    // Загружаем данные о текущем прогрессе игрока
+    function loadGameData() {
+      const transaction = db.transaction(['gameStats'], 'readonly');
+      const store = transaction.objectStore('gameStats');
+      const request = store.get(1);
+
+      request.onsuccess = function(event) {
+        const data = event.target.result;
+        if (data) {
+          document.getElementById('attempts').textContent = data.attempts;
+          document.getElementById('lastGuess').textContent = data.lastGuess;
+        }
+      };
     }
 
-    function showCart() {
-      const modal = document.getElementById("cart-modal");
-      modal.style.display = modal.style.display === "block" ? "none" : "block";
-
-      const container = document.getElementById("cart-items");
-      container.innerHTML = "";
-
-      cart.forEach((item, i) => {
-        const div = document.createElement("div");
-        div.innerHTML = `${item.name} – ${item.price} 
-          <button onclick="removeItem(${i})">Удалить</button>`;
-        container.appendChild(div);
-      });
+    // Функция для сохранения прогресса в IndexedDB
+    function saveGameData(attempts, lastGuess) {
+      const transaction = db.transaction(['gameStats'], 'readwrite');
+      const store = transaction.objectStore('gameStats');
+      store.put({ id: 1, attempts, lastGuess });
     }
 
-    function removeItem(index) {
-      cart.splice(index, 1);
-      updateCart();
-      showCart();
-    }
+    let secretNumber = Math.floor(Math.random() * 100) + 1; // Секретное число
+    let attempts = 0;
 
-    function sendOrder() {
-      alert("Заказ оформлен. Спасибо!");
-      cart = [];
-      updateCart();
-      showCart();
-    }
+    // Функция проверки введённого числа
+    function checkGuess() {
+      const userGuess = parseInt(document.getElementById('userGuess').value);
+      if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+        document.getElementById('result').textContent = 'Введите число от 1 до 100.';
+        return;
+      }
 
-    function loadProducts() {
-      fetch(CSV_URL)
-        .then(r => r.text())
-        .then(text => {
-          const lines = text.trim().split("\n");
-          const rows = lines.slice(1).map(l => l.split(","));
-          products = rows.map(([cat, name, price, img]) => ({ cat, name, price, img }));
+      attempts++;
+      document.getElementById('attempts').textContent = attempts;
+      document.getElementById('lastGuess').textContent = userGuess;
 
-          renderCategories();
-          renderProducts();
-        });
-    }
+      if (userGuess === secretNumber) {
+        document.getElementById('result').textContent = `Поздравляем! Вы угадали число за ${attempts} попыток.`;
+        secretNumber = Math.floor(Math.random() * 100) + 1; // Генерируем новое число
+        attempts = 0;
+        document.getElementById('attempts').textContent = attempts;
+      } else if (userGuess < secretNumber) {
+        document.getElementById('result').textContent = 'Попробуйте большее число.';
+      } else {
+        document.getElementById('result').textContent = 'Попробуйте меньшее число.';
+      }
 
-    function renderCategories() {
-      const categories = ["all", ...new Set(products.map(p => p.cat))];
-      const select = document.getElementById("category-select");
-      categories.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        select.appendChild(opt);
-      });
-    }
-
-    function renderProducts(filter = "all") {
-      const list = document.getElementById("product-list");
-      list.innerHTML = "";
-
-      products
-        .filter(p => filter === "all" || p.cat === filter)
-        .forEach(p => {
-          const div = document.createElement("div");
-          div.className = "product";
-          div.innerHTML = `
-            <img src="${p.img}" alt="${p.name}">
-            <h4>${p.name}</h4>
-            <p>${p.price}</p>
-            <button class="add-btn">Добавить</button>
-          `;
-          div.querySelector(".add-btn").onclick = () => {
-            cart.push(p);
-            updateCart();
-          };
-          list.appendChild(div);
-        });
-    }
-
-    document.getElementById("category-select").addEventListener("change", (e) => {
-      renderProducts(e.target.value);
-    });
-
-    document.getElementById("cart-button").addEventListener("click", showCart);
-
-    loadProducts();
-  </script>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log("Service Worker зарегистрирован"));
+      saveGameData(attempts, userGuess);
     }
   </script>
 </body>
