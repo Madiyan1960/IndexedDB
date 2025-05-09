@@ -1,164 +1,63 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шашки</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f4f4;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Шашки</title>
+  <style>
+    /* Оформление доски */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px); /* 8 столбцов по 60px */
+      grid-template-rows: repeat(8, 60px); /* 8 строк по 60px */
+      gap: 0;
+      border: 2px solid #000;
+      margin: 20px auto;
+      width: 480px;
+      height: 480px;
+    }
 
-        #board {
-            display: grid;
-            grid-template-columns: repeat(8, 60px);
-            grid-template-rows: repeat(8, 60px);
-            gap: 1px;
-            background-color: #222;
-        }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #f0d9b5; /* Светлый цвет для клеток */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-        .cell {
-            width: 60px;
-            height: 60px;
-            background-color: #f4a300;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .cell:nth-child(even) {
-            background-color: #8b4513;
-        }
-
-        .cell:nth-child(odd) {
-            background-color: #f4a300;
-        }
-
-        .piece {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: black;
-            cursor: pointer;
-        }
-
-        .piece.white {
-            background-color: white;
-        }
-
-        .active {
-            border: 2px solid red;
-        }
-
-        #status {
-            margin-top: 20px;
-            font-size: 1.5rem;
-        }
-    </style>
+    .cell.dark {
+      background-color: #b58863; /* Темный цвет для клеток */
+    }
+  </style>
 </head>
 <body>
-    <div id="board"></div>
-    <div id="status">Ход: Черные</div>
+  <h1>Доска для Шашек</h1>
+  <div id="board"></div>
 
-    <script>
-        const boardElement = document.getElementById('board');
-        const statusElement = document.getElementById('status');
+  <script>
+    const board = document.getElementById('board');
 
-        let board = [];
-        let selectedPiece = null;
-        let currentPlayer = 'black'; // Начинают черные
+    // Функция для создания доски
+    function createBoard() {
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
 
-        // Создаем доску
-        function createBoard() {
-            for (let row = 0; row < 8; row++) {
-                const rowArray = [];
-                for (let col = 0; col < 8; col++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell');
-                    boardElement.appendChild(cell);
-                    rowArray.push(cell);
+          // Задаем темные и светлые клетки
+          if ((row + col) % 2 === 0) {
+            cell.classList.add('dark');
+          }
 
-                    // Добавляем шашки
-                    if ((row + col) % 2 === 1) {
-                        if (row < 3) {
-                            const piece = document.createElement('div');
-                            piece.classList.add('piece', 'white');
-                            piece.dataset.row = row;
-                            piece.dataset.col = col;
-                            piece.addEventListener('click', selectPiece);
-                            cell.appendChild(piece);
-                        } else if (row > 4) {
-                            const piece = document.createElement('div');
-                            piece.classList.add('piece', 'black');
-                            piece.dataset.row = row;
-                            piece.dataset.col = col;
-                            piece.addEventListener('click', selectPiece);
-                            cell.appendChild(piece);
-                        }
-                    }
-                }
-                board.push(rowArray);
-            }
+          // Добавляем клетку в доску
+          board.appendChild(cell);
         }
+      }
+    }
 
-        // Выбор шашки
-        function selectPiece(event) {
-            const piece = event.target;
-            if (piece.classList.contains(currentPlayer)) {
-                if (selectedPiece) {
-                    selectedPiece.classList.remove('active');
-                }
-                selectedPiece = piece;
-                selectedPiece.classList.add('active');
-            } else if (selectedPiece) {
-                // Проверяем, куда можно переместить шашку
-                const fromRow = parseInt(selectedPiece.dataset.row);
-                const fromCol = parseInt(selectedPiece.dataset.col);
-                const toRow = parseInt(piece.dataset.row);
-                const toCol = parseInt(piece.dataset.col);
-
-                if (isValidMove(fromRow, fromCol, toRow, toCol)) {
-                    movePiece(fromRow, fromCol, toRow, toCol);
-                    togglePlayer();
-                }
-
-                selectedPiece.classList.remove('active');
-                selectedPiece = null;
-            }
-        }
-
-        // Проверка на допустимость хода
-        function isValidMove(fromRow, fromCol, toRow, toCol) {
-            return Math.abs(fromRow - toRow) === 1 && Math.abs(fromCol - toCol) === 1;
-        }
-
-        // Перемещение шашки
-        function movePiece(fromRow, fromCol, toRow, toCol) {
-            const fromCell = board[fromRow][fromCol];
-            const toCell = board[toRow][toCol];
-
-            // Перемещаем элемент
-            const piece = fromCell.querySelector('.piece');
-            fromCell.removeChild(piece);
-            toCell.appendChild(piece);
-
-            piece.dataset.row = toRow;
-            piece.dataset.col = toCol;
-        }
-
-        // Переключение игрока
-        function togglePlayer() {
-            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
-            statusElement.textContent = `Ход: ${currentPlayer === 'black' ? 'Черные' : 'Белые'}`;
-        }
-
-        // Инициализация игры
-        createBoard();
-    </script>
+    // Инициализация доски
+    createBoard();
+  </script>
 </body>
 </html>
