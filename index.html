@@ -29,35 +29,118 @@
     .cell.dark {
       background-color: #b58863; /* Темный цвет для клеток */
     }
+
+    .piece {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: black; /* Черная шашка */
+      cursor: pointer;
+    }
+
+    .piece.white {
+      background-color: white; /* Белая шашка */
+    }
   </style>
 </head>
 <body>
-  <h1>Доска для Шашек</h1>
+  <h1>Шашки</h1>
   <div id="board"></div>
 
   <script>
     const board = document.getElementById('board');
+    const boardState = []; // Состояние доски, храним расположение шашек
 
     // Функция для создания доски
     function createBoard() {
       for (let row = 0; row < 8; row++) {
+        boardState[row] = [];
         for (let col = 0; col < 8; col++) {
           const cell = document.createElement('div');
           cell.classList.add('cell');
-
-          // Задаем темные и светлые клетки
+          
+          // Чередуем темные и светлые клетки
           if ((row + col) % 2 === 0) {
             cell.classList.add('dark');
           }
 
           // Добавляем клетку в доску
           board.appendChild(cell);
+          boardState[row][col] = null; // Изначально клетки пустые
         }
       }
     }
 
-    // Инициализация доски
+    // Функция для расставления шашек на начальные позиции
+    function placePieces() {
+      // Черные шашки на первых трех рядах
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 8; col++) {
+          if ((row + col) % 2 !== 0) { // Только для темных клеток
+            const piece = document.createElement('div');
+            piece.classList.add('piece');
+            piece.classList.add('black');
+            piece.setAttribute('data-row', row);
+            piece.setAttribute('data-col', col);
+            piece.addEventListener('click', onPieceClick);
+            boardState[row][col] = piece;
+            board.children[row * 8 + col].appendChild(piece);
+          }
+        }
+      }
+
+      // Белые шашки на последних трех рядах
+      for (let row = 5; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          if ((row + col) % 2 !== 0) { // Только для темных клеток
+            const piece = document.createElement('div');
+            piece.classList.add('piece');
+            piece.classList.add('white');
+            piece.setAttribute('data-row', row);
+            piece.setAttribute('data-col', col);
+            piece.addEventListener('click', onPieceClick);
+            boardState[row][col] = piece;
+            board.children[row * 8 + col].appendChild(piece);
+          }
+        }
+      }
+    }
+
+    // Логика перемещения шашки
+    let selectedPiece = null;
+
+    function onPieceClick(event) {
+      const piece = event.target;
+      const row = parseInt(piece.getAttribute('data-row'));
+      const col = parseInt(piece.getAttribute('data-col'));
+      
+      if (selectedPiece) {
+        // Проверяем, можно ли переместить шашку на эту клетку
+        const selectedRow = parseInt(selectedPiece.getAttribute('data-row'));
+        const selectedCol = parseInt(selectedPiece.getAttribute('data-col'));
+        
+        // Если клетка пустая, перемещаем шашку
+        if (!boardState[row][col]) {
+          boardState[selectedRow][selectedCol] = null;
+          boardState[row][col] = selectedPiece;
+          
+          selectedPiece.setAttribute('data-row', row);
+          selectedPiece.setAttribute('data-col', col);
+          selectedPiece.style.top = `${row * 60}px`;
+          selectedPiece.style.left = `${col * 60}px`;
+
+          selectedPiece = null;
+        }
+      } else {
+        // Если шашка выбрана, запоминаем её
+        selectedPiece = piece;
+      }
+    }
+
+    // Инициализация игры
     createBoard();
+    placePieces();
   </script>
 </body>
 </html>
+
