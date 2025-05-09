@@ -134,7 +134,6 @@
 
         // Проверка на допустимость хода
         function isValidMove(fromRow, fromCol, toRow, toCol) {
-            // Простая проверка на диагональность хода (для нормальной игры можно добавить более сложную логику)
             return Math.abs(fromRow - toRow) === 1 && Math.abs(fromCol - toCol) === 1;
         }
 
