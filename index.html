@@ -3,137 +3,99 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Игра: Избегай падения объектов</title>
+  <title>Объёмная игра (Three.js)</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      background-color: #f0f0f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      overflow: hidden;
     }
-
     canvas {
-      border: 2px solid #333;
-      background-color: #fff;
+      display: block;
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Размеры канваса
-    canvas.width = 800;
-    canvas.height = 600;
-    
-    // Игровые переменные
-    let player = { x: canvas.width / 2, y: canvas.height - 50, width: 50, height: 50, speed: 5 };
-    let obstacles = [];
-    let score = 0;
-    let gameOver = false;
+    // Создаём сцену, камеру и рендерер
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-    // Управление игроком
+    // Куб игрока
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const player = new THREE.Mesh(geometry, material);
+    scene.add(player);
+    camera.position.z = 5;
+
+    // Препятствия
+    const obstacles = [];
+    function createObstacle() {
+      const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+      obstacle.position.x = Math.random() * 4 - 2;
+      obstacle.position.y = Math.random() * 4 - 2;
+      obstacle.position.z = -Math.random() * 10 - 5;
+      scene.add(obstacle);
+      obstacles.push(obstacle);
+    }
+
+    // Движение игрока
     let moveLeft = false;
     let moveRight = false;
+    let moveUp = false;
+    let moveDown = false;
 
-    // Обработчик событий для движения
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') moveLeft = true;
       if (e.key === 'ArrowRight') moveRight = true;
+      if (e.key === 'ArrowUp') moveUp = true;
+      if (e.key === 'ArrowDown') moveDown = true;
     });
 
     window.addEventListener('keyup', (e) => {
       if (e.key === 'ArrowLeft') moveLeft = false;
       if (e.key === 'ArrowRight') moveRight = false;
+      if (e.key === 'ArrowUp') moveUp = false;
+      if (e.key === 'ArrowDown') moveDown = false;
     });
-
-    // Генерация падающих объектов
-    function generateObstacle() {
-      const width = Math.random() * 50 + 20; // случайная ширина
-      const x = Math.random() * (canvas.width - width);
-      obstacles.push({ x: x, y: -20, width: width, height: 20, speed: Math.random() * 2 + 2 });
-    }
 
     // Движение игрока
     function movePlayer() {
-      if (moveLeft && player.x > 0) player.x -= player.speed;
-      if (moveRight && player.x < canvas.width - player.width) player.x += player.speed;
+      if (moveLeft) player.position.x -= 0.1;
+      if (moveRight) player.position.x += 0.1;
+      if (moveUp) player.position.y += 0.1;
+      if (moveDown) player.position.y -= 0.1;
     }
 
-    // Движение объектов
-    function moveObstacles() {
-      obstacles.forEach((obstacle) => {
-        obstacle.y += obstacle.speed;
-      });
-      obstacles = obstacles.filter((obstacle) => obstacle.y < canvas.height);
-    }
-
-    // Проверка столкновений
-    function checkCollisions() {
-      obstacles.forEach((obstacle) => {
-        if (
-          player.x < obstacle.x + obstacle.width &&
-          player.x + player.width > obstacle.x &&
-          player.y < obstacle.y + obstacle.height &&
-          player.y + player.height > obstacle.y
-        ) {
-          gameOver = true;
-        }
-      });
-    }
-
-    // Рисуем элементы на экране
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Игрок
-      ctx.fillStyle = '#007bff';
-      ctx.fillRect(player.x, player.y, player.width, player.height);
-
-      // Объекты
-      ctx.fillStyle = '#ff5722';
-      obstacles.forEach((obstacle) => {
-        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-      });
-
-      // Рейтинг
-      ctx.fillStyle = '#333';
-      ctx.font = '18px Arial';
-      ctx.fillText(`Счёт: ${score}`, 10, 20);
-
-      // Игра окончена
-      if (gameOver) {
-        ctx.fillStyle = '#ff0000';
-        ctx.font = '30px Arial';
-        ctx.fillText('Игра окончена', canvas.width / 2 - 100, canvas.height / 2);
-      }
-    }
-
-    // Главная игровая функция
-    function gameLoop() {
-      if (gameOver) return;
+    // Анимация игры
+    function animate() {
+      requestAnimationFrame(animate);
 
       movePlayer();
-      moveObstacles();
-      checkCollisions();
-      draw();
-      
-      score++;
 
-      // Генерация нового препятствия каждые 1.5 секунды
-      if (Math.random() < 0.02) generateObstacle();
+      // Обновление препятствий
+      obstacles.forEach((obstacle) => {
+        obstacle.position.z += 0.1;
+        if (obstacle.position.z > 5) {
+          obstacle.position.z = -Math.random() * 10 - 5;
+          obstacle.position.x = Math.random() * 4 - 2;
+          obstacle.position.y = Math.random() * 4 - 2;
+        }
+      });
 
-      requestAnimationFrame(gameLoop);
+      renderer.render(scene, camera);
     }
 
-    // Запуск игры
-    gameLoop();
+    // Генерация препятствий каждую секунду
+    setInterval(createObstacle, 1000);
+
+    // Запуск анимации
+    animate();
   </script>
 </body>
 </html>
