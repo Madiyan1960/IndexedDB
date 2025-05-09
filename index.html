@@ -5,41 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Шашки</title>
   <style>
-    /* Оформление доски */
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+    }
+    h1 {
+      color: #2c3e50;
+    }
     #board {
       display: grid;
-      grid-template-columns: repeat(8, 60px); /* 8 столбцов по 60px */
-      grid-template-rows: repeat(8, 60px); /* 8 строк по 60px */
-      gap: 0;
-      border: 2px solid #000;
-      margin: 20px auto;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
       width: 480px;
-      height: 480px;
+      margin: 20px auto;
+      border: 2px solid #333;
     }
-
     .cell {
       width: 60px;
       height: 60px;
-      background-color: #f0d9b5; /* Светлый цвет для клеток */
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
-
-    .cell.dark {
-      background-color: #b58863; /* Темный цвет для клеток */
+    .dark {
+      background: #769656;
     }
-
+    .light {
+      background: #eeeed2;
+    }
     .piece {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background-color: black; /* Черная шашка */
-      cursor: pointer;
+      margin: auto;
+      margin-top: 10px;
     }
-
-    .piece.white {
-      background-color: white; /* Белая шашка */
+    .black-piece {
+      background: black;
+    }
+    .white-piece {
+      background: white;
     }
   </style>
 </head>
@@ -49,127 +52,35 @@
 
   <script>
     const board = document.getElementById('board');
-    const boardState = []; // Состояние доски, храним расположение шашек
 
-    // Функция для создания доски
     function createBoard() {
       for (let row = 0; row < 8; row++) {
-        boardState[row] = [];
         for (let col = 0; col < 8; col++) {
           const cell = document.createElement('div');
           cell.classList.add('cell');
-          
-          // Чередуем темные и светлые клетки
-          if ((row + col) % 2 === 0) {
-            cell.classList.add('dark');
+          cell.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          // Расставляем шашки только на темных клетках
+          if ((row + col) % 2 !== 0) {
+            if (row < 3) {
+              const piece = document.createElement('div');
+              piece.classList.add('piece', 'black-piece');
+              cell.appendChild(piece);
+            } else if (row > 4) {
+              const piece = document.createElement('div');
+              piece.classList.add('piece', 'white-piece');
+              cell.appendChild(piece);
+            }
           }
 
-          // Добавляем клетку в доску
           board.appendChild(cell);
-          boardState[row][col] = null; // Изначально клетки пустые
         }
       }
     }
 
-    // Функция для расставления шашек на начальные позиции
-    function placePieces() {
-      // Черные шашки на первых трех рядах
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 8; col++) {
-          if ((row + col) % 2 !== 0) { // Только для темных клеток
-            const piece = document.createElement('div');
-            piece.classList.add('piece');
-            piece.classList.add('black');
-            piece.setAttribute('data-row', row);
-            piece.setAttribute('data-col', col);
-            piece.setAttribute('draggable', 'true'); // Делаем шашку перетаскиваемой
-            piece.addEventListener('dragstart', onDragStart);
-            piece.addEventListener('dragend', onDragEnd);
-            boardState[row][col] = piece;
-            board.children[row * 8 + col].appendChild(piece);
-          }
-        }
-      }
-
-      // Белые шашки на последних трех рядах
-      for (let row = 5; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          if ((row + col) % 2 !== 0) { // Только для темных клеток
-            const piece = document.createElement('div');
-            piece.classList.add('piece');
-            piece.classList.add('white');
-            piece.setAttribute('data-row', row);
-            piece.setAttribute('data-col', col);
-            piece.setAttribute('draggable', 'true'); // Делаем шашку перетаскиваемой
-            piece.addEventListener('dragstart', onDragStart);
-            piece.addEventListener('dragend', onDragEnd);
-            boardState[row][col] = piece;
-            board.children[row * 8 + col].appendChild(piece);
-          }
-        }
-      }
-    }
-
-    // Логика перемещения шашки
-    let draggedPiece = null;
-
-    function onDragStart(event) {
-      draggedPiece = event.target;
-      setTimeout(() => {
-        event.target.style.display = 'none'; // Убираем шашку из ее исходного положения
-      }, 0);
-    }
-
-    function onDragEnd(event) {
-      setTimeout(() => {
-        draggedPiece.style.display = 'block'; // Восстанавливаем шашку
-        draggedPiece = null;
-      }, 0);
-    }
-
-    function onDragOver(event) {
-      event.preventDefault(); // Позволяем перетаскивание
-    }
-
-    function onDrop(event) {
-      event.preventDefault();
-
-      // Получаем информацию о клетке
-      const cell = event.target;
-      if (cell.classList.contains('dark') && !cell.hasChildNodes()) {
-        // Перемещаем шашку на пустую клетку
-        const row = Math.floor(cell.offsetTop / 60);
-        const col = Math.floor(cell.offsetLeft / 60);
-
-        // Перемещаем шашку на новую клетку
-        const draggedRow = parseInt(draggedPiece.getAttribute('data-row'));
-        const draggedCol = parseInt(draggedPiece.getAttribute('data-col'));
-
-        boardState[draggedRow][draggedCol] = null;
-        boardState[row][col] = draggedPiece;
-        draggedPiece.setAttribute('data-row', row);
-        draggedPiece.setAttribute('data-col', col);
-
-        // Перемещаем элемент на экран
-        draggedPiece.style.top = `${row * 60}px`;
-        draggedPiece.style.left = `${col * 60}px`;
-        cell.appendChild(draggedPiece);
-      }
-    }
-
-    // Функции для настройки перетаскивания
-    function makeCellsDroppable() {
-      const cells = document.querySelectorAll('.cell');
-      cells.forEach(cell => {
-        cell.addEventListener('dragover', onDragOver);
-        cell.addEventListener('drop', onDrop);
-      });
-    }
-
-    // Инициализация игры
     createBoard();
-    placePieces();
-    makeCellsDroppable();
   </script>
 </body>
 </html>
