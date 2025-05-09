@@ -3,144 +3,137 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Игра: Угадай число</title>
+  <title>Игра: Избегай падения объектов</title>
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 1rem;
+      padding: 0;
       background-color: #f0f0f0;
-      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    .container {
-      max-width: 400px;
-      margin: auto;
-      padding: 20px;
+
+    canvas {
+      border: 2px solid #333;
       background-color: #fff;
-      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-    }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    input {
-      padding: 0.5rem;
-      font-size: 1rem;
-      margin: 0.5rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      padding: 0.7rem 1rem;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    #result {
-      margin-top: 1rem;
-      font-size: 1.2rem;
-    }
-    .stats {
-      margin-top: 2rem;
-      font-size: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Игра: Угадай число</h1>
-    <p>Угадай число от 1 до 100</p>
-    <input type="number" id="userGuess" placeholder="Введите число" min="1" max="100" />
-    <button onclick="checkGuess()">Проверить</button>
-    <p id="result"></p>
-
-    <div class="stats">
-      <p><strong>Статистика:</strong></p>
-      <p>Попыток сделано: <span id="attempts">0</span></p>
-      <p>Последняя попытка: <span id="lastGuess">-</span></p>
-    </div>
-  </div>
+  <canvas id="gameCanvas"></canvas>
 
   <script>
-    // Открытие базы данных IndexedDB
-    let db;
-    const request = indexedDB.open('gameDB', 1);
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Размеры канваса
+    canvas.width = 800;
+    canvas.height = 600;
+    
+    // Игровые переменные
+    let player = { x: canvas.width / 2, y: canvas.height - 50, width: 50, height: 50, speed: 5 };
+    let obstacles = [];
+    let score = 0;
+    let gameOver = false;
 
-    request.onerror = function(event) {
-      console.error('Ошибка при открытии базы данных');
-    };
+    // Управление игроком
+    let moveLeft = false;
+    let moveRight = false;
 
-    request.onsuccess = function(event) {
-      db = event.target.result;
-      loadGameData();
-    };
+    // Обработчик событий для движения
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') moveLeft = true;
+      if (e.key === 'ArrowRight') moveRight = true;
+    });
 
-    request.onupgradeneeded = function(event) {
-      db = event.target.result;
-      if (!db.objectStoreNames.contains('gameStats')) {
-        const store = db.createObjectStore('gameStats', { keyPath: 'id' });
-        store.createIndex('attempts', 'attempts');
-        store.createIndex('lastGuess', 'lastGuess');
-      }
-    };
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft') moveLeft = false;
+      if (e.key === 'ArrowRight') moveRight = false;
+    });
 
-    // Загружаем данные о текущем прогрессе игрока
-    function loadGameData() {
-      const transaction = db.transaction(['gameStats'], 'readonly');
-      const store = transaction.objectStore('gameStats');
-      const request = store.get(1);
+    // Генерация падающих объектов
+    function generateObstacle() {
+      const width = Math.random() * 50 + 20; // случайная ширина
+      const x = Math.random() * (canvas.width - width);
+      obstacles.push({ x: x, y: -20, width: width, height: 20, speed: Math.random() * 2 + 2 });
+    }
 
-      request.onsuccess = function(event) {
-        const data = event.target.result;
-        if (data) {
-          document.getElementById('attempts').textContent = data.attempts;
-          document.getElementById('lastGuess').textContent = data.lastGuess;
+    // Движение игрока
+    function movePlayer() {
+      if (moveLeft && player.x > 0) player.x -= player.speed;
+      if (moveRight && player.x < canvas.width - player.width) player.x += player.speed;
+    }
+
+    // Движение объектов
+    function moveObstacles() {
+      obstacles.forEach((obstacle) => {
+        obstacle.y += obstacle.speed;
+      });
+      obstacles = obstacles.filter((obstacle) => obstacle.y < canvas.height);
+    }
+
+    // Проверка столкновений
+    function checkCollisions() {
+      obstacles.forEach((obstacle) => {
+        if (
+          player.x < obstacle.x + obstacle.width &&
+          player.x + player.width > obstacle.x &&
+          player.y < obstacle.y + obstacle.height &&
+          player.y + player.height > obstacle.y
+        ) {
+          gameOver = true;
         }
-      };
+      });
     }
 
-    // Функция для сохранения прогресса в IndexedDB
-    function saveGameData(attempts, lastGuess) {
-      const transaction = db.transaction(['gameStats'], 'readwrite');
-      const store = transaction.objectStore('gameStats');
-      store.put({ id: 1, attempts, lastGuess });
-    }
+    // Рисуем элементы на экране
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let secretNumber = Math.floor(Math.random() * 100) + 1; // Секретное число
-    let attempts = 0;
+      // Игрок
+      ctx.fillStyle = '#007bff';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
 
-    // Функция проверки введённого числа
-    function checkGuess() {
-      const userGuess = parseInt(document.getElementById('userGuess').value);
-      if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
-        document.getElementById('result').textContent = 'Введите число от 1 до 100.';
-        return;
+      // Объекты
+      ctx.fillStyle = '#ff5722';
+      obstacles.forEach((obstacle) => {
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      });
+
+      // Рейтинг
+      ctx.fillStyle = '#333';
+      ctx.font = '18px Arial';
+      ctx.fillText(`Счёт: ${score}`, 10, 20);
+
+      // Игра окончена
+      if (gameOver) {
+        ctx.fillStyle = '#ff0000';
+        ctx.font = '30px Arial';
+        ctx.fillText('Игра окончена', canvas.width / 2 - 100, canvas.height / 2);
       }
-
-      attempts++;
-      document.getElementById('attempts').textContent = attempts;
-      document.getElementById('lastGuess').textContent = userGuess;
-
-      if (userGuess === secretNumber) {
-        document.getElementById('result').textContent = `Поздравляем! Вы угадали число за ${attempts} попыток.`;
-        secretNumber = Math.floor(Math.random() * 100) + 1; // Генерируем новое число
-        attempts = 0;
-        document.getElementById('attempts').textContent = attempts;
-      } else if (userGuess < secretNumber) {
-        document.getElementById('result').textContent = 'Попробуйте большее число.';
-      } else {
-        document.getElementById('result').textContent = 'Попробуйте меньшее число.';
-      }
-
-      saveGameData(attempts, userGuess);
     }
+
+    // Главная игровая функция
+    function gameLoop() {
+      if (gameOver) return;
+
+      movePlayer();
+      moveObstacles();
+      checkCollisions();
+      draw();
+      
+      score++;
+
+      // Генерация нового препятствия каждые 1.5 секунды
+      if (Math.random() < 0.02) generateObstacle();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Запуск игры
+    gameLoop();
   </script>
 </body>
 </html>
