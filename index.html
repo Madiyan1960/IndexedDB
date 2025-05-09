@@ -1,101 +1,165 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Объёмная игра (Three.js)</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шашки</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 1px;
+            background-color: #222;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cell:nth-child(even) {
+            background-color: #8b4513;
+        }
+
+        .cell:nth-child(odd) {
+            background-color: #f4a300;
+        }
+
+        .piece {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: black;
+            cursor: pointer;
+        }
+
+        .piece.white {
+            background-color: white;
+        }
+
+        .active {
+            border: 2px solid red;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 1.5rem;
+        }
+    </style>
 </head>
 <body>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-    // Создаём сцену, камеру и рендерер
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    <div id="board"></div>
+    <div id="status">Ход: Черные</div>
 
-    // Куб игрока
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const player = new THREE.Mesh(geometry, material);
-    scene.add(player);
-    camera.position.z = 5;
+    <script>
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
 
-    // Препятствия
-    const obstacles = [];
-    function createObstacle() {
-      const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
-      const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-      const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
-      obstacle.position.x = Math.random() * 4 - 2;
-      obstacle.position.y = Math.random() * 4 - 2;
-      obstacle.position.z = -Math.random() * 10 - 5;
-      scene.add(obstacle);
-      obstacles.push(obstacle);
-    }
+        let board = [];
+        let selectedPiece = null;
+        let currentPlayer = 'black'; // Начинают черные
 
-    // Движение игрока
-    let moveLeft = false;
-    let moveRight = false;
-    let moveUp = false;
-    let moveDown = false;
+        // Создаем доску
+        function createBoard() {
+            for (let row = 0; row < 8; row++) {
+                const rowArray = [];
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    boardElement.appendChild(cell);
+                    rowArray.push(cell);
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') moveLeft = true;
-      if (e.key === 'ArrowRight') moveRight = true;
-      if (e.key === 'ArrowUp') moveUp = true;
-      if (e.key === 'ArrowDown') moveDown = true;
-    });
-
-    window.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowLeft') moveLeft = false;
-      if (e.key === 'ArrowRight') moveRight = false;
-      if (e.key === 'ArrowUp') moveUp = false;
-      if (e.key === 'ArrowDown') moveDown = false;
-    });
-
-    // Движение игрока
-    function movePlayer() {
-      if (moveLeft) player.position.x -= 0.1;
-      if (moveRight) player.position.x += 0.1;
-      if (moveUp) player.position.y += 0.1;
-      if (moveDown) player.position.y -= 0.1;
-    }
-
-    // Анимация игры
-    function animate() {
-      requestAnimationFrame(animate);
-
-      movePlayer();
-
-      // Обновление препятствий
-      obstacles.forEach((obstacle) => {
-        obstacle.position.z += 0.1;
-        if (obstacle.position.z > 5) {
-          obstacle.position.z = -Math.random() * 10 - 5;
-          obstacle.position.x = Math.random() * 4 - 2;
-          obstacle.position.y = Math.random() * 4 - 2;
+                    // Добавляем шашки
+                    if ((row + col) % 2 === 1) {
+                        if (row < 3) {
+                            const piece = document.createElement('div');
+                            piece.classList.add('piece', 'white');
+                            piece.dataset.row = row;
+                            piece.dataset.col = col;
+                            piece.addEventListener('click', selectPiece);
+                            cell.appendChild(piece);
+                        } else if (row > 4) {
+                            const piece = document.createElement('div');
+                            piece.classList.add('piece', 'black');
+                            piece.dataset.row = row;
+                            piece.dataset.col = col;
+                            piece.addEventListener('click', selectPiece);
+                            cell.appendChild(piece);
+                        }
+                    }
+                }
+                board.push(rowArray);
+            }
         }
-      });
 
-      renderer.render(scene, camera);
-    }
+        // Выбор шашки
+        function selectPiece(event) {
+            const piece = event.target;
+            if (piece.classList.contains(currentPlayer)) {
+                if (selectedPiece) {
+                    selectedPiece.classList.remove('active');
+                }
+                selectedPiece = piece;
+                selectedPiece.classList.add('active');
+            } else if (selectedPiece) {
+                // Проверяем, куда можно переместить шашку
+                const fromRow = parseInt(selectedPiece.dataset.row);
+                const fromCol = parseInt(selectedPiece.dataset.col);
+                const toRow = parseInt(piece.dataset.row);
+                const toCol = parseInt(piece.dataset.col);
 
-    // Генерация препятствий каждую секунду
-    setInterval(createObstacle, 1000);
+                if (isValidMove(fromRow, fromCol, toRow, toCol)) {
+                    movePiece(fromRow, fromCol, toRow, toCol);
+                    togglePlayer();
+                }
 
-    // Запуск анимации
-    animate();
-  </script>
+                selectedPiece.classList.remove('active');
+                selectedPiece = null;
+            }
+        }
+
+        // Проверка на допустимость хода
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            // Простая проверка на диагональность хода (для нормальной игры можно добавить более сложную логику)
+            return Math.abs(fromRow - toRow) === 1 && Math.abs(fromCol - toCol) === 1;
+        }
+
+        // Перемещение шашки
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const fromCell = board[fromRow][fromCol];
+            const toCell = board[toRow][toCol];
+
+            // Перемещаем элемент
+            const piece = fromCell.querySelector('.piece');
+            fromCell.removeChild(piece);
+            toCell.appendChild(piece);
+
+            piece.dataset.row = toRow;
+            piece.dataset.col = toCol;
+        }
+
+        // Переключение игрока
+        function togglePlayer() {
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            statusElement.textContent = `Ход: ${currentPlayer === 'black' ? 'Черные' : 'Белые'}`;
+        }
+
+        // Инициализация игры
+        createBoard();
+    </script>
 </body>
 </html>
