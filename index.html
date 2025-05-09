@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Шашки</title>
   <style>
     body {
@@ -24,6 +24,7 @@
     .cell {
       width: 60px;
       height: 60px;
+      position: relative;
     }
     .dark {
       background: #769656;
@@ -35,8 +36,10 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      margin: auto;
-      margin-top: 10px;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      cursor: grab;
     }
     .black-piece {
       background: black;
@@ -62,15 +65,12 @@
           cell.dataset.row = row;
           cell.dataset.col = col;
 
-          // Расставляем шашки только на темных клетках
           if ((row + col) % 2 !== 0) {
             if (row < 3) {
-              const piece = document.createElement('div');
-              piece.classList.add('piece', 'black-piece');
+              const piece = createPiece('black');
               cell.appendChild(piece);
             } else if (row > 4) {
-              const piece = document.createElement('div');
-              piece.classList.add('piece', 'white-piece');
+              const piece = createPiece('white');
               cell.appendChild(piece);
             }
           }
@@ -79,6 +79,40 @@
         }
       }
     }
+
+    function createPiece(color) {
+      const piece = document.createElement('div');
+      piece.classList.add('piece', color === 'black' ? 'black-piece' : 'white-piece');
+      piece.draggable = true;
+
+      piece.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', 'dragging');
+        piece.classList.add('dragging');
+        piece._parentCell = piece.parentElement;
+      });
+
+      piece.addEventListener('dragend', () => {
+        piece.classList.remove('dragging');
+      });
+
+      return piece;
+    }
+
+    board.addEventListener('dragover', e => {
+      e.preventDefault();
+    });
+
+    board.addEventListener('drop', e => {
+      const cell = e.target.closest('.cell');
+      const dragging = document.querySelector('.dragging');
+      if (
+        cell &&
+        cell.classList.contains('dark') &&
+        cell.children.length === 0
+      ) {
+        cell.appendChild(dragging);
+      }
+    });
 
     createBoard();
   </script>
