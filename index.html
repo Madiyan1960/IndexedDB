@@ -2,77 +2,29 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Магазин на IndexedDB</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    input, button { margin: 0.3rem; padding: 0.4rem; }
-    .product { border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 8px; }
-    .product button { margin-left: 1rem; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Магазин у дома</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h2>Добавить товар</h2>
-  <input id="name" placeholder="Название">
-  <input id="price" type="number" placeholder="Цена">
-  <button onclick="addProduct()">Добавить</button>
+  <h1>Магазин у дома</h1>
 
-  <h2>Список товаров</h2>
-  <div id="product-list"></div>
+  <select id="categoryFilter">
+    <option value="">Все категории</option>
+    <option value="Молочные">Молочные</option>
+    <option value="Хлебобулочные">Хлебобулочные</option>
+  </select>
 
-<script>
-let db;
-const request = indexedDB.open("ShopDB", 1);
+  <div class="product-list" id="productList"></div>
 
-request.onupgradeneeded = function(event) {
-  db = event.target.result;
-  const store = db.createObjectStore("products", { keyPath: "id", autoIncrement: true });
-  store.createIndex("name", "name", { unique: false });
-};
-
-request.onsuccess = function(event) {
-  db = event.target.result;
-  showProducts();
-};
-
-function addProduct() {
-  const name = document.getElementById("name").value;
-  const price = parseFloat(document.getElementById("price").value);
-  if (!name || !price) return alert("Введите название и цену");
-
-  const tx = db.transaction("products", "readwrite");
-  const store = tx.objectStore("products");
-  store.add({ name, price });
-  tx.oncomplete = () => {
-    document.getElementById("name").value = "";
-    document.getElementById("price").value = "";
-    showProducts();
-  };
-}
-
-function showProducts() {
-  const tx = db.transaction("products", "readonly");
-  const store = tx.objectStore("products");
-  const request = store.getAll();
-
-  request.onsuccess = function() {
-    const list = document.getElementById("product-list");
-    list.innerHTML = "";
-    request.result.forEach(product => {
-      const div = document.createElement("div");
-      div.className = "product";
-      div.innerHTML = `${product.name} — ${product.price} ₸ 
-        <button onclick="deleteProduct(${product.id})">Удалить</button>`;
-      list.appendChild(div);
-    });
-  };
-}
-
-function deleteProduct(id) {
-  const tx = db.transaction("products", "readwrite");
-  const store = tx.objectStore("products");
-  store.delete(id);
-  tx.oncomplete = showProducts;
-}
-</script>
+  <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(() => console.log("SW зарегистрирован"))
+        .catch(err => console.error("Ошибка SW:", err));
+    }
+  </script>
 </body>
 </html>
