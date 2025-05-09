@@ -82,7 +82,9 @@
             piece.classList.add('black');
             piece.setAttribute('data-row', row);
             piece.setAttribute('data-col', col);
-            piece.addEventListener('click', onPieceClick);
+            piece.setAttribute('draggable', 'true'); // Делаем шашку перетаскиваемой
+            piece.addEventListener('dragstart', onDragStart);
+            piece.addEventListener('dragend', onDragEnd);
             boardState[row][col] = piece;
             board.children[row * 8 + col].appendChild(piece);
           }
@@ -98,7 +100,9 @@
             piece.classList.add('white');
             piece.setAttribute('data-row', row);
             piece.setAttribute('data-col', col);
-            piece.addEventListener('click', onPieceClick);
+            piece.setAttribute('draggable', 'true'); // Делаем шашку перетаскиваемой
+            piece.addEventListener('dragstart', onDragStart);
+            piece.addEventListener('dragend', onDragEnd);
             boardState[row][col] = piece;
             board.children[row * 8 + col].appendChild(piece);
           }
@@ -107,40 +111,65 @@
     }
 
     // Логика перемещения шашки
-    let selectedPiece = null;
+    let draggedPiece = null;
 
-    function onPieceClick(event) {
-      const piece = event.target;
-      const row = parseInt(piece.getAttribute('data-row'));
-      const col = parseInt(piece.getAttribute('data-col'));
-      
-      if (selectedPiece) {
-        // Проверяем, можно ли переместить шашку на эту клетку
-        const selectedRow = parseInt(selectedPiece.getAttribute('data-row'));
-        const selectedCol = parseInt(selectedPiece.getAttribute('data-col'));
-        
-        // Если клетка пустая, перемещаем шашку
-        if (!boardState[row][col]) {
-          boardState[selectedRow][selectedCol] = null;
-          boardState[row][col] = selectedPiece;
-          
-          selectedPiece.setAttribute('data-row', row);
-          selectedPiece.setAttribute('data-col', col);
-          selectedPiece.style.top = `${row * 60}px`;
-          selectedPiece.style.left = `${col * 60}px`;
+    function onDragStart(event) {
+      draggedPiece = event.target;
+      setTimeout(() => {
+        event.target.style.display = 'none'; // Убираем шашку из ее исходного положения
+      }, 0);
+    }
 
-          selectedPiece = null;
-        }
-      } else {
-        // Если шашка выбрана, запоминаем её
-        selectedPiece = piece;
+    function onDragEnd(event) {
+      setTimeout(() => {
+        draggedPiece.style.display = 'block'; // Восстанавливаем шашку
+        draggedPiece = null;
+      }, 0);
+    }
+
+    function onDragOver(event) {
+      event.preventDefault(); // Позволяем перетаскивание
+    }
+
+    function onDrop(event) {
+      event.preventDefault();
+
+      // Получаем информацию о клетке
+      const cell = event.target;
+      if (cell.classList.contains('dark') && !cell.hasChildNodes()) {
+        // Перемещаем шашку на пустую клетку
+        const row = Math.floor(cell.offsetTop / 60);
+        const col = Math.floor(cell.offsetLeft / 60);
+
+        // Перемещаем шашку на новую клетку
+        const draggedRow = parseInt(draggedPiece.getAttribute('data-row'));
+        const draggedCol = parseInt(draggedPiece.getAttribute('data-col'));
+
+        boardState[draggedRow][draggedCol] = null;
+        boardState[row][col] = draggedPiece;
+        draggedPiece.setAttribute('data-row', row);
+        draggedPiece.setAttribute('data-col', col);
+
+        // Перемещаем элемент на экран
+        draggedPiece.style.top = `${row * 60}px`;
+        draggedPiece.style.left = `${col * 60}px`;
+        cell.appendChild(draggedPiece);
       }
+    }
+
+    // Функции для настройки перетаскивания
+    function makeCellsDroppable() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        cell.addEventListener('dragover', onDragOver);
+        cell.addEventListener('drop', onDrop);
+      });
     }
 
     // Инициализация игры
     createBoard();
     placePieces();
+    makeCellsDroppable();
   </script>
 </body>
 </html>
-
